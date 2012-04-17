@@ -88,8 +88,11 @@
 
 (defmethod serialize-val :serfn [val]
   (let [[env namespace source-form] ((juxt ::env ::namespace ::source) (meta val))
-        rest-ser (Utils/serialize (dissoc (meta val) ::env ::namespace ::source))
-        ser-env (best-effort-map-val env serialize)]
+        rest-ser (-> (meta val)
+                     (dissoc ::env ::namespace ::source)
+                     (best-effort-map-val serialize)
+                     Utils/serialize)
+        ser-env (-> env (best-effort-map-val serialize) Utils/serialize)]
     (Utils/serializeFn rest-ser ser-env namespace (pr-str source-form))))
 
 (defmulti deserialize-val (fn [token serialized]
@@ -98,16 +101,6 @@
 (defn deserialize [serialized]
   (let [[token val-ser] (Utils/deserializePair serialized)]
     (deserialize-val token val-ser)))
-
-(defn best-effort-env-deserialize [env]
-  (->> env
-       (mapcat
-        (fn [[name val]]
-          (try
-            [name (deserialize val)]
-            (catch Exception e
-              []
-              ))))))
 
 (defmethod deserialize-val :var [_ serialized]
   (let [[ns name] (Utils/deserializeVar serialized)]
@@ -120,8 +113,8 @@
 
 (defmethod deserialize-val :serfn [_ serialized]
   (let [[ser-meta ser-env namespace source] (Utils/deserializeFn serialized)
-        rest-meta (Utils/deserialize ser-meta)
-        env (best-effort-map-val ser-env deserialize)
+        rest-meta (best-effort-map-val (Utils/deserialize ser-meta) deserialize)
+        env (best-effort-map-val (Utils/deserialize ser-env) deserialize)
         source-form (read-string source)
         namespace (symbol namespace)
         old-ns (-> *ns* str symbol)

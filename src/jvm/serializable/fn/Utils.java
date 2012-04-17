@@ -12,9 +12,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class Utils {
 
@@ -68,16 +66,11 @@ public class Utils {
         return ret;
     }
     
-    public static byte[] serializeFn(byte[] restMeta, Map<String, byte[]> env, String namespace, String source) throws IOException {
+    public static byte[] serializeFn(byte[] restMeta, byte[] serEnv, String namespace, String source) throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         DataOutputStream dos = new DataOutputStream(bos);
         writeBinary(dos, restMeta);
-        dos.writeInt(env.size());
-        for(String name: env.keySet()) {
-            byte[] val = env.get(name);
-            dos.writeUTF(name);
-            writeBinary(dos, val);
-        }
+        writeBinary(dos, serEnv);
         dos.writeUTF(namespace);
         dos.writeUTF(source);        
         return bos.toByteArray();        
@@ -85,17 +78,11 @@ public class Utils {
     
     public static List deserializeFn(byte[] serialized) throws IOException {
         List ret = new ArrayList();
-        Map<String, byte[]> env = new HashMap();
         DataInputStream is = new DataInputStream(new ByteArrayInputStream(serialized));
         byte[] restMeta = readBinary(is);
-        int envAmt = is.readInt();
-        for(int i=0; i<envAmt; i++) {
-            String name = is.readUTF();
-            byte[] val = readBinary(is);
-            env.put(name, val);
-        }
+        byte[] serEnv = readBinary(is);
         ret.add(restMeta);
-        ret.add(env);
+        ret.add(serEnv);
         ret.add(is.readUTF());
         ret.add(is.readUTF());
         return ret;

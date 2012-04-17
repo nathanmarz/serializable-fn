@@ -49,6 +49,10 @@ Demo:
 ;; 5
 ```
 
+## TODO
+
+- Recurse into collections with the deep function serialization
+
 ## License
 
 Copyright © 2010-2012 Seajure, The Seattle Clojure group and contributors
