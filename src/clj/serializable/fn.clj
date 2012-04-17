@@ -128,21 +128,10 @@
         env (best-effort-map-val ser-env deserialize)
         source-form (read-string source)
         namespace (symbol namespace)
-        _ (println env source source-form namespace)
         old-ns (-> *ns* str symbol)
+        bindings (mapcat (fn [[name val]] [(symbol name) val]) env)
+        to-eval `(let ~(vec bindings) ~source-form)
         _ (in-ns (symbol namespace))
-        ;; TODO: this is stupid. it has to be lexical context.
-
-        saved (into {}
-                    (for [[name val] env :let [avar (intern *ns* (symbol name))
-                                               old (var-get avar)]]
-                      (do
-                        (set-var-root* avar val)
-                        [avar old])))
-        ret (try
-              (eval source-form)
-              (finally
-               (reset-vars saved)
-               ))]
+        ret (eval to-eval)]
     (in-ns old-ns)
     ret ))
