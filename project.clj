@@ -2,6 +2,7 @@
   :url "http://github.com/technomancy/serializable-fn"
   :description "Make functions that have pretty representations."
   :author "Seajure"
+  :aot :all
   :source-path "src/clj"
   :java-source-path "src/jvm"
   :license {:name "Eclipse Public License"

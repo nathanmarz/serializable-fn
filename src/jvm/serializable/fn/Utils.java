@@ -136,7 +136,7 @@ public class Utils {
     }
     
     private static void writeBinary(DataOutputStream dos, byte[] bytes) throws IOException {
-        dos.write(bytes.length);
+        dos.writeInt(bytes.length);
         dos.write(bytes);
     }
     

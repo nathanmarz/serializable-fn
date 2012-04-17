@@ -8,7 +8,7 @@
                (meta form))
         quoted-form `(quote ~form)
         namespace (str *ns*)
-        savers (for [b bindings] [(str .sym b) (.sym b)])
+        savers (for [b bindings] [(str (.sym b)) (.sym b)])
         env-form `(into {} ~(vec savers))
         ]
     [env-form namespace quoted-form]
@@ -76,17 +76,18 @@
       (Utils/serializeVar ns fn-name))))
 
 (defn best-effort-map-val [amap afn]
-  (->> amap
+  (into {}
        (mapcat
         (fn [[name val]]
           (try
-            [name (afn val)]
+            [[name (afn val)]]
             (catch Exception e
               []
-              ))))))
+              )))
+        amap)))
 
-(defmethods serialize-val :serfn [val]
-  (let [[env namespace source-form] ((juxt ::env ::namespace ::source-form) (meta val))        
+(defmethod serialize-val :serfn [val]
+  (let [[env namespace source-form] ((juxt ::env ::namespace ::source) (meta val))        
         ser-env (best-effort-map-val env serialize)]
     (Utils/serializeFn ser-env namespace (pr-str source-form))))
 
@@ -123,15 +124,15 @@
     ))
 
 (defmethod deserialize-val :serfn [_ serialized]
-  (let [[ser-env namespace source] (Utils/deserializeVal serialized)
-        env (best-effort-map-val env deserialize)
+  (let [[ser-env namespace source] (Utils/deserializeFn serialized)
+        env (best-effort-map-val ser-env deserialize)
         source-form (read-string source)
         namespace (symbol namespace)
+        _ (println env source source-form namespace)
         old-ns (-> *ns* str symbol)
         _ (in-ns (symbol namespace))
-        ;; altering var roots is the only option here
-        ;; 1. generating a let binding fails because many objects can't be evaled as code
-        ;; 2. Using push/pop thread-bindings fails because the vars may already exist and be non-dynamic
+        ;; TODO: this is stupid. it has to be lexical context.
+
         saved (into {}
                     (for [[name val] env :let [avar (intern *ns* (symbol name))
                                                old (var-get avar)]]
