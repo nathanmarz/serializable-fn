@@ -68,9 +68,10 @@ public class Utils {
         return ret;
     }
     
-    public static byte[] serializeFn(Map<String, byte[]> env, String namespace, String source) throws IOException {
+    public static byte[] serializeFn(byte[] restMeta, Map<String, byte[]> env, String namespace, String source) throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         DataOutputStream dos = new DataOutputStream(bos);
+        writeBinary(dos, restMeta);
         dos.writeInt(env.size());
         for(String name: env.keySet()) {
             byte[] val = env.get(name);
@@ -86,12 +87,14 @@ public class Utils {
         List ret = new ArrayList();
         Map<String, byte[]> env = new HashMap();
         DataInputStream is = new DataInputStream(new ByteArrayInputStream(serialized));
+        byte[] restMeta = readBinary(is);
         int envAmt = is.readInt();
         for(int i=0; i<envAmt; i++) {
             String name = is.readUTF();
             byte[] val = readBinary(is);
             env.put(name, val);
         }
+        ret.add(restMeta);
         ret.add(env);
         ret.add(is.readUTF());
         ret.add(is.readUTF());

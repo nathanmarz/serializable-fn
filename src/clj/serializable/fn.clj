@@ -87,9 +87,10 @@
         amap)))
 
 (defmethod serialize-val :serfn [val]
-  (let [[env namespace source-form] ((juxt ::env ::namespace ::source) (meta val))        
+  (let [[env namespace source-form] ((juxt ::env ::namespace ::source) (meta val))
+        rest-ser (Utils/serialize (dissoc (meta val) ::env ::namespace ::source))
         ser-env (best-effort-map-val env serialize)]
-    (Utils/serializeFn ser-env namespace (pr-str source-form))))
+    (Utils/serializeFn rest-ser ser-env namespace (pr-str source-form))))
 
 (defmulti deserialize-val (fn [token serialized]
                             (token->type token)))
@@ -118,7 +119,8 @@
 (def ^:dynamic *GLOBAL-ENV* {})
 
 (defmethod deserialize-val :serfn [_ serialized]
-  (let [[ser-env namespace source] (Utils/deserializeFn serialized)
+  (let [[ser-meta ser-env namespace source] (Utils/deserializeFn serialized)
+        rest-meta (Utils/deserialize ser-meta)
         env (best-effort-map-val ser-env deserialize)
         source-form (read-string source)
         namespace (symbol namespace)
@@ -128,4 +130,4 @@
         _ (in-ns (symbol namespace))
         ret (binding [*GLOBAL-ENV* env] (eval to-eval))]
     (in-ns old-ns)
-    ret ))
+    (vary-meta ret merge rest-meta)))
