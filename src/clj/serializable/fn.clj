@@ -115,13 +115,7 @@
 (defmethod deserialize-val :java [_ serialized]
   (Utils/deserialize serialized))
 
-(defn set-var-root* [avar val]
-  (alter-var-root avar (fn [avar] val)))
-
-(defn reset-vars [var-map]
-  (doseq [[avar val] var-map]
-    (set-var-root* avar val)
-    ))
+(def ^:dynamic *GLOBAL-ENV* {})
 
 (defmethod deserialize-val :serfn [_ serialized]
   (let [[ser-env namespace source] (Utils/deserializeFn serialized)
@@ -129,9 +123,9 @@
         source-form (read-string source)
         namespace (symbol namespace)
         old-ns (-> *ns* str symbol)
-        bindings (mapcat (fn [[name val]] [(symbol name) val]) env)
+        bindings (mapcat (fn [[name val]] [(symbol name) `(*GLOBAL-ENV* ~name)]) env)
         to-eval `(let ~(vec bindings) ~source-form)
         _ (in-ns (symbol namespace))
-        ret (eval to-eval)]
+        ret (binding [*GLOBAL-ENV* env] (eval to-eval))]
     (in-ns old-ns)
     ret ))
