@@ -119,8 +119,5 @@
         namespace (symbol namespace)
         old-ns (-> *ns* str symbol)
         bindings (mapcat (fn [[name val]] [(symbol name) `(*GLOBAL-ENV* ~name)]) env)
-        to-eval `(let ~(vec bindings) ~source-form)
-        _ (in-ns (symbol namespace))
-        ret (binding [*GLOBAL-ENV* env] (eval to-eval))]
-    (in-ns old-ns)
-    (vary-meta ret merge rest-meta)))
+        to-eval `(let ~(vec bindings) ~source-form)]
+    (vary-meta (binding [*ns* (create-ns (symbol namespace)) *GLOBAL-ENV* env] (eval to-eval)) merge rest-meta)))

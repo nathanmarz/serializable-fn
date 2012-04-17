@@ -1,4 +1,4 @@
-(defproject cascalog/serializable-fn "0.0.2"
+(defproject cascalog/serializable-fn "0.0.3-SNAPSHOT"
   :url "http://github.com/technomancy/serializable-fn"
   :description "Serializable functions in Clojure"
   :source-path "src/clj"
