@@ -10,7 +10,8 @@
         savers (for [b bindings] [(str (.sym b)) (.sym b)])
         env-form `(into {} ~(vec savers))
         ]
-    [env-form namespace (pr-str form)]
+    ;; without the print-dup, it sometimes serializes invalid code strings (with subforms replaced with "#")
+    [env-form namespace (binding [*print-dup* true] (pr-str form))]
     ))
 
 (defmacro ^{:doc (str (:doc (meta #'clojure.core/fn))
