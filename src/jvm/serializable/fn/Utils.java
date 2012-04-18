@@ -1,6 +1,7 @@
 package serializable.fn;
 
 import clojure.lang.IFn;
+import clojure.lang.MultiFn;
 import clojure.lang.RT;
 import clojure.lang.Var;
 import java.io.ByteArrayInputStream;
@@ -120,10 +121,19 @@ public class Utils {
                 throw new RuntimeException(e);
         }
     }
+
     public static IFn bootSimpleFn(String ns_name, String fn_name) {
-        tryRequire(ns_name);
-        return (IFn) RT.var(ns_name, fn_name).deref();
+        return (IFn) bootSimpleVar(ns_name, fn_name).deref();
     }
+
+    public static MultiFn bootSimpleMultifn(String ns_name, String fn_name) {
+        return (MultiFn) bootSimpleVar(ns_name, fn_name).deref();
+    }
+    
+    public static Var bootSimpleVar(String ns_name, String fn_name) {
+        tryRequire(ns_name);
+        return RT.var(ns_name, fn_name);
+    }    
     
     private static void writeBinary(DataOutputStream dos, byte[] bytes) throws IOException {
         dos.writeInt(bytes.length);

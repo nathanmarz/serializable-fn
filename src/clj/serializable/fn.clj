@@ -6,12 +6,11 @@
 (defn- save-env [bindings form]
   (let [form (with-meta (cons `fn (rest form)) ; serializable/fn, not core/fn
                (meta form))
-        quoted-form `(quote ~form)
         namespace (str *ns*)
         savers (for [b bindings] [(str (.sym b)) (.sym b)])
         env-form `(into {} ~(vec savers))
         ]
-    [env-form namespace quoted-form]
+    [env-form namespace (pr-str form)]
     ))
 
 (defmacro ^{:doc (str (:doc (meta #'clojure.core/fn))
@@ -33,9 +32,11 @@
        first ))
 
 (def SERIALIZED-TYPES
-  {:var 1
+  {:find-var 1
    :serfn 2
-   :java 3})
+   :java 3
+   :var 4
+   :multifn 5})
 
 (defn type->token [type]
   (SERIALIZED-TYPES type))
@@ -46,12 +47,12 @@
     ))
 
 (defn serialize-type [val]
-  (if (fn? val)
-    (if (= ::serializable-fn (-> val meta :type))
-      :serfn
-      :var)
-    :java
-    ))
+  (cond (var? val) :var
+        (instance? clojure.lang.MultiFn val) :multifn
+        (fn? val) (if (= ::serializable-fn (-> val meta :type))
+                    :serfn
+                    :find-var)
+        :else :java))
 
 (defmulti serialize-val serialize-type)
 
@@ -68,12 +69,22 @@
   (let [m (meta v)]
     [(str (:ns m)) (str (:name m))]))
 
-(defmethod serialize-val :var [val]
+(defn serialize-find [val]
   (let [avar (search-for-var val)]
     (when-not avar
       (throw (RuntimeException. "Cannot serialize regular functions that are not bound to vars")))
-    (let [[ns fn-name] (ns-fn-name-pair avar)]
-      (Utils/serializeVar ns fn-name))))
+    (serialize-val avar)
+    ))
+
+(defmethod serialize-val :find-var [val]
+  (serialize-find val))
+
+(defmethod serialize-val :multifn [val]
+  (serialize-find val))
+
+(defmethod serialize-val :var [avar]
+  (let [[ns fn-name] (ns-fn-name-pair avar)]
+    (Utils/serializeVar ns fn-name)))
 
 (defn best-effort-map-val [amap afn]
   (into {}
@@ -87,13 +98,13 @@
         amap)))
 
 (defmethod serialize-val :serfn [val]
-  (let [[env namespace source-form] ((juxt ::env ::namespace ::source) (meta val))
+  (let [[env namespace source] ((juxt ::env ::namespace ::source) (meta val))
         rest-ser (-> (meta val)
                      (dissoc ::env ::namespace ::source)
                      (best-effort-map-val serialize)
                      Utils/serialize)
         ser-env (-> env (best-effort-map-val serialize) Utils/serialize)]
-    (Utils/serializeFn rest-ser ser-env namespace (pr-str source-form))))
+    (Utils/serializeFn rest-ser ser-env namespace source)))
 
 (defmulti deserialize-val (fn [token serialized]
                             (token->type token)))
@@ -102,9 +113,17 @@
   (let [[token val-ser] (Utils/deserializePair serialized)]
     (deserialize-val token val-ser)))
 
-(defmethod deserialize-val :var [_ serialized]
+(defmethod deserialize-val :find-var [_ serialized]
   (let [[ns name] (Utils/deserializeVar serialized)]
     (Utils/bootSimpleFn ns name)))
+
+(defmethod deserialize-val :multifn [_ serialized]
+  (let [[ns name] (Utils/deserializeVar serialized)]
+    (Utils/bootSimpleMultifn ns name)))
+
+(defmethod deserialize-val :var [_ serialized]
+  (let [[ns name] (Utils/deserializeVar serialized)]
+    (Utils/bootSimpleVar ns name)))
 
 (defmethod deserialize-val :java [_ serialized]
   (Utils/deserialize serialized))
@@ -115,7 +134,8 @@
   (let [[ser-meta ser-env namespace source] (Utils/deserializeFn serialized)
         rest-meta (best-effort-map-val (Utils/deserialize ser-meta) deserialize)
         env (best-effort-map-val (Utils/deserialize ser-env) deserialize)
-        source-form (read-string source)
+        source-form (try (read-string source) (catch Exception e
+                                                (throw (RuntimeException. (str "Could not deserialize " source)))))
         namespace (symbol namespace)
         old-ns (-> *ns* str symbol)
         bindings (mapcat (fn [[name val]] [(symbol name) `(*GLOBAL-ENV* ~name)]) env)
