@@ -25,7 +25,7 @@
         ::source ~form})))
 
 (defn search-for-var [val]
-  (->> (loaded-libs)
+  (->> (all-ns)
        (map ns-map)
        (mapcat identity)
        (map second)
