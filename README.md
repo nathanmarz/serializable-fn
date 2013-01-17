@@ -14,7 +14,7 @@ The environment of an anonymous function is serialized recursively.
 
 For other functions (that were not created using the replacement `fn` macro), the library searches for a var in any loaded lib whose value is equal to that function. It then serializes the namespace and name of that var.
 
-All other objects that need to be serialized are serialized using Java serialization.
+Kryo is used for efficient serialization.
 
 Demo:
 
