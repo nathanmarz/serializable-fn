@@ -148,7 +148,7 @@
         env (best-effort-map-val (Utils/deserialize ser-env) deserialize)
         source-form (try (read-string source) (catch Exception e
                                                 (throw (RuntimeException. (str "Could not deserialize " source)))))
-        namespace (symbol namespace)
+        namespace (symbol ns)
         old-ns (-> *ns* str symbol)
         bindings (mapcat (fn [[name val]] [(symbol name) `(*GLOBAL-ENV* ~name)]) env)
         to-eval `(let ~(vec bindings) ~source-form)]
