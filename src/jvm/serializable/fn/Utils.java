@@ -14,85 +14,32 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import serializable.fn.kryo.KryoSerialization;
 
 public class Utils {
-
+    
     public static byte[] serialize(Object obj) throws IOException {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = new ObjectOutputStream(bos);
-        oos.writeObject(obj);
-        oos.close();
-        return bos.toByteArray();
+        // ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        // ObjectOutputStream oos = new ObjectOutputStream(bos);
+        // oos.writeObject(obj);
+        // oos.close();
+        // return bos.toByteArray();
+        KryoSerialization kryo = new KryoSerialization();
+        return kryo.serialize(obj);
     }
 
-    public static Object deserialize(byte[] serialized) throws IOException, ClassNotFoundException {
-        ByteArrayInputStream bis = new ByteArrayInputStream(serialized);
-        ObjectInputStream ois = new ObjectInputStream(bis);
-        Object ret = ois.readObject();
-        ois.close();
-        return ret;
+    public static Object deserialize(byte[] serialized) throws IOException {
+        // ByteArrayInputStream bis = new ByteArrayInputStream(serialized);
+        // ObjectInputStream ois = new ObjectInputStream(bis);
+        // Object ret = ois.readObject();
+        // ois.close();
+        // return ret;
+        KryoSerialization kryo = new KryoSerialization();
+        return kryo.deserialize(serialized);
     }
     
-    public static byte[] serializePair(Number token, byte[] serialized) throws IOException {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        DataOutputStream dos = new DataOutputStream(bos);
-        dos.writeInt(token.intValue());
-        writeBinary(dos, serialized);
-        return bos.toByteArray();
-    }
-    
-    public static List deserializePair(byte[] serialized) throws IOException {
-        List ret = new ArrayList();
-        DataInputStream is = new DataInputStream(new ByteArrayInputStream(serialized));
-        int token = is.readInt();
-        byte[] val = readBinary(is);
-        ret.add(token);
-        ret.add(val);
-        return ret;
-    }
-    
-    public static byte[] serializeVar(String namespace, String name) throws IOException {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        DataOutputStream dos = new DataOutputStream(bos);
-        dos.writeUTF(namespace);
-        dos.writeUTF(name);
-        return bos.toByteArray();        
-    }
-    
-    public static List deserializeVar(byte[] serialized) throws IOException {
-        List ret = new ArrayList();
-        DataInputStream is = new DataInputStream(new ByteArrayInputStream(serialized));
-        ret.add(is.readUTF());
-        ret.add(is.readUTF());
-        return ret;
-    }
-    
-    public static byte[] serializeFn(byte[] restMeta, byte[] serEnv, String namespace, String source) throws IOException {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        DataOutputStream dos = new DataOutputStream(bos);
-        writeBinary(dos, restMeta);
-        writeBinary(dos, serEnv);
-        dos.writeUTF(namespace);
-        dos.writeUTF(source);        
-        return bos.toByteArray();        
-    }
-    
-    public static List deserializeFn(byte[] serialized) throws IOException {
-        List ret = new ArrayList();
-        DataInputStream is = new DataInputStream(new ByteArrayInputStream(serialized));
-        byte[] restMeta = readBinary(is);
-        byte[] serEnv = readBinary(is);
-        ret.add(restMeta);
-        ret.add(serEnv);
-        ret.add(is.readUTF());
-        ret.add(is.readUTF());
-        return ret;
-    }
-
-
     static Var require = RT.var("clojure.core", "require");
     static Var symbol = RT.var("clojure.core", "symbol");
-
 
     public static Throwable getRootCause(Throwable e) {
         Throwable rootCause = e;
@@ -134,16 +81,4 @@ public class Utils {
         tryRequire(ns_name);
         return RT.var(ns_name, fn_name);
     }    
-    
-    private static void writeBinary(DataOutputStream dos, byte[] bytes) throws IOException {
-        dos.writeInt(bytes.length);
-        dos.write(bytes);
-    }
-    
-    private static byte[] readBinary(DataInputStream dos) throws IOException {
-        int len = dos.readInt();
-        byte[] ret = new byte[len];
-        dos.readFully(ret);
-        return ret;
-    }
 }
