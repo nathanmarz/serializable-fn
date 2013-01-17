@@ -98,8 +98,25 @@
   (let [[ns fn-name] (ns-fn-name-pair avar)]
     (Utils/serialize {:ns ns :fn-name fn-name})))
 
+(defn best-effort-map-val [amap afn]
+  (into {}
+       (mapcat
+        (fn [[name val]]
+          (try
+            [[name (afn val)]]
+            (catch Exception e
+              []
+              )))
+        amap)))
+
 (defmethod serialize-val :serfn [val]
-  (Utils/serialize (meta val)))
+  (let [[env namespace source] ((juxt ::env ::namespace ::source) (meta val))
+        ser-meta (-> (meta val)
+                     (dissoc ::env ::namespace ::source)
+                     (best-effort-map-val serialize)
+                     Utils/serialize)
+        ser-env (-> env (best-effort-map-val serialize) Utils/serialize)]
+    (Utils/serialize {:ser-meta ser-meta :ser-env ser-env :ns namespace :source source})))
 
 (defmulti deserialize-val (fn [token serialized]
                             (token->type token)))
@@ -126,8 +143,9 @@
 (def ^:dynamic *GLOBAL-ENV* {})
 
 (defmethod deserialize-val :serfn [_ serialized]
-  (let [{env ::env namespace ::namespace source ::source} (Utils/deserialize serialized)
-        rest-meta (dissoc (Utils/deserialize serialized) ::env ::namespace ::source)
+  (let [{:keys [ser-meta ser-env ns source]} (Utils/deserialize serialized)
+        rest-meta (best-effort-map-val (Utils/deserialize ser-meta) deserialize)
+        env (best-effort-map-val (Utils/deserialize ser-env) deserialize)
         source-form (try (read-string source) (catch Exception e
                                                 (throw (RuntimeException. (str "Could not deserialize " source)))))
         namespace (symbol namespace)
